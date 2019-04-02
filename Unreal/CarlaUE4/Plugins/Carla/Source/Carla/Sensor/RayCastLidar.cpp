@@ -49,22 +49,27 @@ void ARayCastLidar::Set(const FLidarDescription &LidarDescription)
 
 void ARayCastLidar::CreateLasers()
 {
+  // check if inputs are correct
   const auto NumberOfLasers = Description.Channels;
-  check(NumberOfLasers > 0u);
-  const float DeltaAngle = NumberOfLasers == 1u ? 0.f :
-    (Description.UpperFovLimit - Description.LowerFovLimit) /
-    static_cast<float>(NumberOfLasers - 1);
-  LaserAngles.Empty(NumberOfLasers);
+  check(NumberOfLasers == Description.layer_elevation.Num());
+  check(NumberOfLasers == Description.layer_azimuth.Num());
+
+  // fill laser properties
+  RangeStd = Description.RangeMeasStd;
+  LaserElevationAngles.Empty(NumberOfLasers);
+  LaserAzimuthOffsets.Empty(NumberOfLasers);
   for(auto i = 0u; i < NumberOfLasers; ++i)
   {
-    const float VerticalAngle =
-      Description.UpperFovLimit - static_cast<float>(i) * DeltaAngle;
-    LaserAngles.Emplace(VerticalAngle);
+    const float VerticalAngle = Description.layer_elevation[i];
+    const float AzimuthOffset = Description.layer_azimuth[i];
+    LaserElevationAngles.Emplace(VerticalAngle);
+    LaserAzimuthOffsets.Emplace(AzimuthOffset);
   }
 }
 
 void ARayCastLidar::Tick(const float DeltaTime)
 {
+  // increment time read and send points
   Super::Tick(DeltaTime);
 
   ReadPoints(DeltaTime);
@@ -75,6 +80,7 @@ void ARayCastLidar::Tick(const float DeltaTime)
 
 void ARayCastLidar::ReadPoints(const float DeltaTime)
 {
+  //TODO: improve readability by using angular resolution
   const uint32 ChannelCount = Description.Channels;
   const uint32 PointsToScanWithOneLaser =
     FMath::RoundHalfFromZero(
@@ -90,16 +96,21 @@ void ARayCastLidar::ReadPoints(const float DeltaTime)
     return;
   }
 
-  check(ChannelCount == LaserAngles.Num());
+  // check properties
+  check(ChannelCount == LaserElevationAngles.Num());
+  check(ChannelCount == LaserAzimuthOffsets.Num());
 
+  // calc horizontal angular distance between points in one layer
   const float CurrentHorizontalAngle = LidarMeasurement.GetHorizontalAngle();
   const float AngleDistanceOfTick = Description.RotationFrequency * 360.0f * DeltaTime;
   const float AngleDistanceOfLaserMeasure = AngleDistanceOfTick / PointsToScanWithOneLaser;
 
   LidarMeasurement.Reset(ChannelCount * PointsToScanWithOneLaser);
 
+  // loop over channels
   for (auto Channel = 0u; Channel < ChannelCount; ++Channel)
   {
+    // loop over points in channel that are recorded in tick
     for (auto i = 0u; i < PointsToScanWithOneLaser; ++i)
     {
       FVector Point;
@@ -117,7 +128,9 @@ void ARayCastLidar::ReadPoints(const float DeltaTime)
 
 bool ARayCastLidar::ShootLaser(const uint32 Channel, const float HorizontalAngle, FVector &XYZ) const
 {
-  const float VerticalAngle = LaserAngles[Channel];
+  // get elevation and azimuth for laser beam
+  const float ElevationAngle = LaserElevationAngles[Channel];
+  const float AzimuthAngle = HorizontalAngle + LaserAzimuthOffsets[Channel];
 
   FCollisionQueryParams TraceParams = FCollisionQueryParams(FName(TEXT("Laser_Trace")), true, this);
   TraceParams.bTraceComplex = true;
@@ -125,9 +138,10 @@ bool ARayCastLidar::ShootLaser(const uint32 Channel, const float HorizontalAngle
 
   FHitResult HitInfo(ForceInit);
 
+  // get rotation
   FVector LidarBodyLoc = GetActorLocation();
   FRotator LidarBodyRot = GetActorRotation();
-  FRotator LaserRot (VerticalAngle, HorizontalAngle, 0);  // float InPitch, float InYaw, float InRoll
+  FRotator LaserRot (ElevationAngle, AzimuthAngle, 0);  // float InPitch, float InYaw, float InRoll
   FRotator ResultRot = UKismetMathLibrary::ComposeRotators(
     LaserRot,
     LidarBodyRot
@@ -135,6 +149,7 @@ bool ARayCastLidar::ShootLaser(const uint32 Channel, const float HorizontalAngle
   const auto Range = Description.Range;
   FVector EndTrace = Range * UKismetMathLibrary::GetForwardVector(ResultRot) + LidarBodyLoc;
 
+  // do ray tracing
   GetWorld()->LineTraceSingleByChannel(
     HitInfo,
     LidarBodyLoc,
@@ -146,6 +161,7 @@ bool ARayCastLidar::ShootLaser(const uint32 Channel, const float HorizontalAngle
 
   if (HitInfo.bBlockingHit)
   {
+    // laser beam hit something
     if (Description.ShowDebugPoints)
     {
       DrawDebugPoint(
@@ -158,7 +174,15 @@ bool ARayCastLidar::ShootLaser(const uint32 Channel, const float HorizontalAngle
       );
     }
 
-    XYZ = LidarBodyLoc - HitInfo.ImpactPoint;
+    // ground truth of measurement point
+    FVector gt_XYZ = LidarBodyLoc - HitInfo.ImpactPoint;
+
+    // apply range measurement uncertainty
+    const float range_error = FMath::RandRange(-1.0f, 1.0f) * RangeStd;
+    const float range = gt_XYZ.Size();
+    XYZ = (gt_XYZ / range) * (range + range_error);
+
+    // make 0 deg facing front (instead right)
     XYZ = UKismetMathLibrary::RotateAngleAxis(
       XYZ,
       - LidarBodyRot.Yaw + 90,
@@ -167,6 +191,7 @@ bool ARayCastLidar::ShootLaser(const uint32 Channel, const float HorizontalAngle
 
     return true;
   } else {
+    // laser beam did not hit anything
     return false;
   }
 }

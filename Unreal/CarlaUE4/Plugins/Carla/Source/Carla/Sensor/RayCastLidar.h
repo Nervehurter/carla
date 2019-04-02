@@ -53,7 +53,9 @@ private:
   UPROPERTY(EditAnywhere)
   FLidarDescription Description;
 
-  TArray<float> LaserAngles;
+  TArray<float> LaserElevationAngles;
+  TArray<float> LaserAzimuthOffsets;
+  float RangeStd;
 
   FLidarMeasurement LidarMeasurement;
 };
