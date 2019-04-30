@@ -41,7 +41,7 @@ namespace SceneCaptureSensor_local_ns {
 // -- ASceneCaptureSensor ------------------------------------------------------
 // =============================================================================
 
-ASceneCaptureSensor::ASceneCaptureSensor(const FObjectInitializer& ObjectInitializer)
+ASceneCaptureSensor::ASceneCaptureSensor(const FObjectInitializer &ObjectInitializer)
   : Super(ObjectInitializer)
 {
   PrimaryActorTick.bCanEverTick = true;
@@ -86,6 +86,16 @@ void ASceneCaptureSensor::SetImageSize(uint32 InWidth, uint32 InHeight)
 {
   ImageWidth = InWidth;
   ImageHeight = InHeight;
+}
+
+void ASceneCaptureSensor::RotateSceneCaptureComponent2D(const FRotator &rotation)
+{
+  CaptureComponent2D->AddLocalRotation(rotation);
+}
+
+FRotator ASceneCaptureSensor::GetSceneCaptureComponent2DRotator() const
+{
+  return CaptureComponent2D->GetComponentRotation();
 }
 
 void ASceneCaptureSensor::SetFOVAngle(const float FOVAngle)
@@ -134,7 +144,8 @@ void ASceneCaptureSensor::BeginPlay()
 
   // Setup render target.
   const bool bInForceLinearGamma = !bEnablePostProcessingEffects;
-  if (bEnablePostProcessingEffects) {
+  if (bEnablePostProcessingEffects)
+  {
     CaptureRenderTarget->TargetGamma = 2.4f;
   }
   CaptureRenderTarget->InitCustomFormat(ImageWidth, ImageHeight, PF_B8G8R8A8, bInForceLinearGamma);
@@ -189,8 +200,8 @@ void ASceneCaptureSensor::UpdateDrawFrustum()
     // 1000 is the default frustum distance, ideally this would be infinite but
     // that might cause rendering issues.
     DrawFrustum->FrustumEndDist =
-      (CaptureComponent2D->MaxViewDistanceOverride > DrawFrustum->FrustumStartDist)
-      ? CaptureComponent2D->MaxViewDistanceOverride : 1000.0f;
+        (CaptureComponent2D->MaxViewDistanceOverride > DrawFrustum->FrustumStartDist)
+        ? CaptureComponent2D->MaxViewDistanceOverride : 1000.0f;
 
     DrawFrustum->FrustumAngle = CaptureComponent2D->FOVAngle;
   }
@@ -215,7 +226,8 @@ namespace SceneCaptureSensor_local_ns {
     PostProcessSettings.AutoExposureBias = -3.5f;
   }
 
-  // Remove the show flags that might interfere with post-processing effects like
+  // Remove the show flags that might interfere with post-processing effects
+  // like
   // depth and semantic segmentation.
   static void RemoveShowFlags(FEngineShowFlags &ShowFlags)
   {

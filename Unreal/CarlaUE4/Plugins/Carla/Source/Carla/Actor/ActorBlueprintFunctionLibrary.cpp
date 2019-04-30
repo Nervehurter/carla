@@ -316,7 +316,7 @@ void UActorBlueprintFunctionLibrary::MakeLidarDefinition(
   FActorVariation Channels;
   Channels.Id = TEXT("channels");
   Channels.Type = EActorAttributeType::Int;
-  Channels.RecommendedValues = { TEXT("32") };
+  Channels.RecommendedValues = { TEXT("16"), TEXT("32"), TEXT("64"), TEXT("128") };
   // Range.
   FActorVariation Range;
   Range.Id = TEXT("range");
@@ -704,7 +704,7 @@ void UActorBlueprintFunctionLibrary::SetLidar(
   Lidar.Channels =
       RetrieveActorAttributeToInt("channels", Description.Variations, Lidar.Channels);
   Lidar.Range =
-      RetrieveActorAttributeToFloat("range", Description.Variations, Lidar.Range);
+      RetrieveActorAttributeToFloat("range", Description.Variations, Lidar.Range) * 100.0;
   Lidar.PointsPerSecond =
       RetrieveActorAttributeToInt("points_per_second", Description.Variations, Lidar.PointsPerSecond);
   Lidar.RotationFrequency =

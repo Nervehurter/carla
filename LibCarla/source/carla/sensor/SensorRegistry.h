@@ -19,6 +19,7 @@
 #include "carla/sensor/s11n/ImageSerializer.h"
 #include "carla/sensor/s11n/LidarSerializer.h"
 #include "carla/sensor/s11n/ObstacleDetectionEventSerializer.h"
+#include "carla/sensor/s11n/GPULidarSerializer.h"
 
 // 2. Add a forward-declaration of the sensor here.
 class ACollisionSensor;
@@ -27,8 +28,10 @@ class AGnssSensor;
 class ALaneInvasionSensor;
 class AObstacleDetectionSensor;
 class ARayCastLidar;
+class AGPULidar;
 class ASceneCaptureCamera;
 class ASemanticSegmentationCamera;
+class AWorldObserver;
 class FWorldObserver;
 
 namespace carla {
@@ -40,6 +43,7 @@ namespace sensor {
   /// and deserializing sensor data for the types registered.
   using SensorRegistry = CompositeSerializer<
     std::pair<FWorldObserver *, s11n::EpisodeStateSerializer>,
+    std::pair<AWorldObserver *, s11n::EpisodeStateSerializer>,
     std::pair<ASceneCaptureCamera *, s11n::ImageSerializer>,
     std::pair<ADepthCamera *, s11n::ImageSerializer>,
     std::pair<ASemanticSegmentationCamera *, s11n::ImageSerializer>,
@@ -48,6 +52,8 @@ namespace sensor {
     std::pair<AGnssSensor *, s11n::ImageSerializer>,
     std::pair<ALaneInvasionSensor *, s11n::ImageSerializer>,
     std::pair<AObstacleDetectionSensor *, s11n::ObstacleDetectionEventSerializer>
+    std::pair<AGPULidar *, s11n::GPULidarSerializer>,
+    std::pair<ACollisionSensor *, s11n::CollisionEventSerializer>
   >;
 
 } // namespace sensor
@@ -61,6 +67,7 @@ namespace sensor {
 #include "Carla/Sensor/CollisionSensor.h"
 #include "Carla/Sensor/DepthCamera.h"
 #include "Carla/Sensor/RayCastLidar.h"
+#include "Carla/Sensor/GPULidar.h"
 #include "Carla/Sensor/SceneCaptureCamera.h"
 #include "Carla/Sensor/SemanticSegmentationCamera.h"
 #include "Carla/Sensor/WorldObserver.h"
